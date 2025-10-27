@@ -1,9 +1,8 @@
 #include <SDL3/SDL.h>
 #include <iostream>
-#include <vector>
 #include "optick.h"
 #include "world.h"
-#include <stacktrace>
+// #include <stacktrace>
 
 void init_world(SDL_Renderer* renderer, World& world);
 void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world);
@@ -17,7 +16,7 @@ int main(int argc, char* argv[])
     }
 
     SDL_Window* window = SDL_CreateWindow(
-        "Advanced Programming Course(Last Name/First Name)",
+        "Advanced Programming Course(Zharinov/Egor)",
         1600, 1200,
         SDL_WINDOW_RESIZABLE // вместо SDL_WINDOW_SHOWN
     );
