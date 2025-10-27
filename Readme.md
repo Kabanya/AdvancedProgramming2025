@@ -20,13 +20,18 @@ Build the builds and run them successfully.
 
 ## 1. Profile it!
 
-Profile Debug and Release builds and save it.
+Снимите профайл для Debug и Release билдов и сохраните их.
+Используйте Optick profiler https://github.com/bombomby/optick
+Для семплирований коллстеков запускайте VS/VSCode с правами администратора!
 
 ![Profile example](readme_images/profile.jpg)
 
 ## 2. Data oriented design refactor
 
-Need to refactor every OOP style code like this:
+**DeadLine** - 13.11.25
+**Баллы** - 5
+
+Нужно отрефакторить OOP-style код из такого:
 ```
 auto newCell = world.create_object();
 newCell->add_component<Sprite>(tileset.get_tile(spriteName));
@@ -34,15 +39,44 @@ newCell->add_component<Transform2D>(j, i);
 newCell->add_component<BackGroundTag>();
 ```
 
-With data oriented design SoA approach like that:
+В такой при использовании data-ориентированного SoA подхода:
 ```
-struct Tiles
+struct TilesArchetype
 {
     std::vector<Sprite> sprite;
     std::vector<Transform2D> transform;
     // no need to add BackGroundTag, because we don't need it in SoA approach
-}
+} tiles;
+...
+// world.tiles.reserve(n);
+world.tiles.sprite.push_back(tileset.get_tile(spriteName));
+world.tiles.transform.push_back(Transform2D(j, i));
 ```
 
-After successful refactor attach profiles after.
+После успешного рефактора снимите профайл "после"
 
+Разбалловка
+3 балла. Полностью убрано использование класса Component и GameObject.
+1 балл. Убрана виртуальность в логике food классов и заменена, для примера, на std::variant
+1 балл. Все игровые объекты разделены на SoA архетипы как в примере. Singleton классы типа StarvationSystem не нужно переделывать под SoA.
+
+Комментарии:
+1) класс Enemy - в действительности это просто NPC
+2) все удаления сущностей должны быть отложенными (см World::update())
+2) для работы с архетипами реализуйте хелперы для добавления/удаления сущностей - OK использовать макросы
+
+
+## 3. Pathfinding, behaviour tree
+
+**DeadLine** - 20.11.25
+**Баллы** - 4
+
+## 4. Task system, thread-pool
+
+**DeadLine** - 27.11.25
+**Баллы** - 4
+
+## 5. Network application
+
+**DeadLine** - 11.12.25
+**Баллы** - 5
