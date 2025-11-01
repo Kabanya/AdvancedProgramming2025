@@ -3,7 +3,7 @@
 #include "game_object.h"
 #include <memory>
 #include <vector>
-
+#include <algorithm>
 
 
 class World : public std::enable_shared_from_this<World> {
