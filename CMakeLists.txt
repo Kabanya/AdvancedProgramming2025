@@ -40,3 +40,11 @@ add_subdirectory(3rd_party/optick)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE OptickCore)
 target_include_directories(${PROJECT_NAME} PRIVATE 3rd_party/optick/src)
+
+# --- Копируем DLL файлы SDL3 в директорию сборки ---
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:SDL3::SDL3>
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/
+    COMMENT "Copying SDL3.dll to output directory"
+)
