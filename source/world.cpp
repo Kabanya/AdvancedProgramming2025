@@ -19,6 +19,22 @@ void World::update(float dt) {
 }
 
 void World::process_deferred_removals() {
+    // Process Hero removals
+    if (!hero.delayedRemove.empty()) {
+        std::sort(hero.delayedRemove.begin(), hero.delayedRemove.end(), std::greater<size_t>());
+        for (size_t idx : hero.delayedRemove) {
+            if (idx < hero.size()) {
+                hero.sprite.erase(hero.sprite.begin() + idx);
+                hero.transform.erase(hero.transform.begin() + idx);
+                hero.health.erase(hero.health.begin() + idx);
+                hero.stamina.erase(hero.stamina.begin() + idx);
+                hero.restrictor.erase(hero.restrictor.begin() + idx);
+                hero.heroData.erase(hero.heroData.begin() + idx);
+            }
+        }
+        hero.delayedRemove.clear();
+    }
+
     // Process NPC removals (sort in descending order to remove from back to front)
     if (!npcs.delayedRemove.empty()) {
         std::sort(npcs.delayedRemove.begin(), npcs.delayedRemove.end(), std::greater<size_t>());
@@ -128,14 +144,21 @@ void World::update_food_consumption(float dt) {
         auto& heroTransform = hero.transform[h];
         auto& heroHealth = hero.health[h];
         auto& heroStamina = hero.stamina[h];
-
         for (size_t f = 0; f < food.size(); ++f) {
+            // Check if food is already marked for removal
+            bool foodMarkedForRemoval = false;
+            for (size_t idx : food.delayedRemove) {
+                if (idx == f) {
+                    foodMarkedForRemoval = true;
+                    break;
+                }
+            }
+            if (foodMarkedForRemoval)
+                continue;
             auto& foodTransform = food.transform[f];
-
             // Check collision
             if (int(heroTransform.x) == int(foodTransform.x) &&
                 int(heroTransform.y) == int(foodTransform.y)) {
-
                 // Consume food based on type
                 std::visit([&](auto&& foodData) {
                     using T = std::decay_t<decltype(foodData)>;
@@ -145,7 +168,6 @@ void World::update_food_consumption(float dt) {
                         heroStamina.change(foodData.restore);
                     }
                 }, food.foodType[f]);
-
                 // Mark food for removal
                 remove_food(f);
                 break; // Consume only one food at a time
@@ -158,18 +180,40 @@ void World::update_food_consumption(float dt) {
         // Check if this NPC is a consumer
         if (!std::holds_alternative<NPCConsumer>(npcs.npcType[n]))
             continue;
-
+        
+        // Check if this NPC is already marked for removal
+        bool npcMarkedForRemoval = false;
+        for (size_t idx : npcs.delayedRemove) {
+            if (idx == n) {
+                npcMarkedForRemoval = true;
+                break;
+            }
+        }
+        if (npcMarkedForRemoval)
+            continue;
+            
         auto& npcTransform = npcs.transform[n];
         auto& npcHealth = npcs.health[n];
         auto& npcStamina = npcs.stamina[n];
-
+        
         for (size_t f = 0; f < food.size(); ++f) {
+            // Check if food is already marked for removal
+            bool foodMarkedForRemoval = false;
+            for (size_t idx : food.delayedRemove) {
+                if (idx == f) {
+                    foodMarkedForRemoval = true;
+                    break;
+                }
+            }
+            if (foodMarkedForRemoval)
+                continue;
+            
             auto& foodTransform = food.transform[f];
-
+            
             // Check collision
             if (int(npcTransform.x) == int(foodTransform.x) &&
                 int(npcTransform.y) == int(foodTransform.y)) {
-
+                
                 // Consume food based on type
                 std::visit([&](auto&& foodData) {
                     using T = std::decay_t<decltype(foodData)>;
@@ -179,7 +223,7 @@ void World::update_food_consumption(float dt) {
                         npcStamina.change(foodData.restore);
                     }
                 }, food.foodType[f]);
-
+                
                 // Mark food for removal
                 remove_food(f);
                 break; // Consume only one food at a time
@@ -189,33 +233,75 @@ void World::update_food_consumption(float dt) {
 }
 
 void World::update_predators(float dt) {
-    // Predators hunt consumer NPCs
+    // Predators hunt consumer NPCs and hero
     for (size_t p = 0; p < npcs.size(); ++p) {
         // Check if this NPC is a predator
         if (!std::holds_alternative<NPCPredator>(npcs.npcType[p]))
             continue;
-
+        
+        // Check if this predator was already marked for removal
+        bool predatorMarkedForRemoval = false;
+        for (size_t idx : npcs.delayedRemove) {
+            if (idx == p) {
+                predatorMarkedForRemoval = true;
+                break;
+            }
+        }
+        if (predatorMarkedForRemoval)
+            continue;
         auto& predatorTransform = npcs.transform[p];
         auto& predatorHealth = npcs.health[p];
-
+        bool victimFound = false;
+        // First, check if hero can be hunted
+        for (size_t h = 0; h < hero.size(); ++h) {
+            // Check if hero is already marked for removal
+            bool heroMarkedForRemoval = false;
+            for (size_t idx : hero.delayedRemove) {
+                if (idx == h) {
+                    heroMarkedForRemoval = true;
+                    break;
+                }
+            }
+            if (heroMarkedForRemoval)
+                continue;
+            auto& heroTransform = hero.transform[h];
+            auto& heroHealth = hero.health[h];
+            // Check collision
+            if (int(predatorTransform.x) == int(heroTransform.x) &&
+                int(predatorTransform.y) == int(heroTransform.y)) {
+                // Heal predator by hero's current health
+                predatorHealth.change(heroHealth.current);
+                // Kill hero
+                hero.delayedRemove.push_back(h);
+                victimFound = true;
+                break;
+            }
+        }
+        if (victimFound)
+            continue; // Predator already ate, skip to next predator
         // Look for victims (consumer NPCs)
         for (size_t v = 0; v < npcs.size(); ++v) {
             if (p == v) continue; // Skip self
-
+            // Check if victim is already marked for removal
+            bool victimMarkedForRemoval = false;
+            for (size_t idx : npcs.delayedRemove) {
+                if (idx == v) {
+                    victimMarkedForRemoval = true;
+                    break;
+                }
+            }
+            if (victimMarkedForRemoval)
+                continue;
             // Check if victim is a consumer
             if (!std::holds_alternative<NPCConsumer>(npcs.npcType[v]))
                 continue;
-
             auto& victimTransform = npcs.transform[v];
             auto& victimHealth = npcs.health[v];
-
             // Check collision
             if (int(predatorTransform.x) == int(victimTransform.x) &&
                 int(predatorTransform.y) == int(victimTransform.y)) {
-
                 // Heal predator by victim's current health
                 predatorHealth.change(victimHealth.current);
-
                 // Kill victim
                 remove_npc(v);
                 break; // Consume only one victim at a time
