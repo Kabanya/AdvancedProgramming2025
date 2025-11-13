@@ -1,8 +1,7 @@
 #pragma once
-#include "component.h"
 #include "image.h"
 
-struct Sprite : public Component {
+struct Sprite {
     TexturePtr texture;
     SDL_FRect src;
     Sprite() : texture(nullptr), src{0, 0, 0, 0} {}

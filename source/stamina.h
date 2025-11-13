@@ -1,13 +1,10 @@
 #pragma once
 
-#include "component.h"
-
-class Stamina : public Component {
-public:
+struct Stamina {
     int current;
     int max;
 
-    Stamina(int maxStamina) : current(maxStamina), max(maxStamina) {}
+    Stamina(int maxStamina = 100) : current(maxStamina), max(maxStamina) {}
 
     void change(int delta) {
         current += delta;

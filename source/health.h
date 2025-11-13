@@ -1,13 +1,10 @@
 #pragma once
 
-#include "component.h"
-
-class Health : public Component {
-public:
+struct Health {
     int current;
     int max;
 
-    Health(int maxHealth) : current(maxHealth), max(maxHealth) {}
+    Health(int maxHealth = 100) : current(maxHealth), max(maxHealth) {}
 
     void change(int delta) {
         current += delta;

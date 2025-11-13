@@ -3,10 +3,9 @@
 #include "transform2d.h"
 #include <SDL3/SDL_rect.h>
 
-class Camera2D : public Component {
-public:
+struct Camera2D {
     float pixelsPerMeter;
-    Camera2D(float pixelsPerMeter)
+    Camera2D(float pixelsPerMeter = 32.f)
         : pixelsPerMeter(pixelsPerMeter) {}
 };
 

@@ -38,11 +38,11 @@ int main(int argc, char* argv[])
     }
 
     {
-        auto world = std::make_shared<World>();
+        World world;
 
         {
             OPTICK_EVENT("world.init");
-            init_world(renderer, *world);
+            init_world(renderer, world);
         }
 
         bool quit = false;
@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
             lastTicks = now;
             {
                 OPTICK_EVENT("world.update");
-                world->update(deltaTime);
+                world.update(deltaTime);
             }
 
             // Теперь сразу цвет внутри Clear
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
             {
                 OPTICK_EVENT("world.render");
                 // Отрисовка всех игровых объектов
-                render_world(window, renderer, *world);
+                render_world(window, renderer, world);
             }
 
             SDL_RenderPresent(renderer);

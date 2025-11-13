@@ -1,7 +1,6 @@
 #pragma once
-#include "component.h"
 
-struct Transform2D : public Component {
+struct Transform2D {
     using value_type = double;
     value_type x, y;
     value_type sizeX, sizeY;
@@ -10,4 +9,4 @@ struct Transform2D : public Component {
 
 };
 
-static_assert(sizeof(Transform2D) != sizeof(Transform2D::value_type) * 4, "I don't know why Transform2D isn't just 4 value_types ???");
+static_assert(sizeof(Transform2D) == sizeof(Transform2D::value_type) * 4, "Transform2D should be exactly 4 value_types");
