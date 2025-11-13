@@ -2,8 +2,8 @@
 #include "game_object.h"
 #include "restrictor.h"
 #include "stamina.h"
+#include "transform2d.h"
 #include <SDL3/SDL.h>
-#include <algorithm>
 
 class Enemy : public Component {
 private:

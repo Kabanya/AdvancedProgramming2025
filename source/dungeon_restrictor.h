@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dungeon_generator.h"
 #include "restrictor.h"
 
 class DungeonRestrictor : public IRestrictor {

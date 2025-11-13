@@ -5,6 +5,7 @@
 #include "health.h"
 #include "stamina.h"
 #include "background_tag.h"
+#include "food.h"
 
 
 class HealthFood : public IFood {

@@ -3,7 +3,7 @@
 #include "restrictor.h"
 #include "stamina.h"
 #include <SDL3/SDL.h>
-#include <algorithm>
+#include "transform2d.h"
 
 class Hero : public Component {
 private:

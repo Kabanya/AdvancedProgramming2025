@@ -1,6 +1,8 @@
 #pragma once
 
 #include "component.h"
+#include "game_object.h"
+
 class IFood : public Component {
 
 public:

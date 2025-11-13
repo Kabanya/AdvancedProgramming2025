@@ -33,8 +33,8 @@ void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world)
         if (!sprite || !transform)
             continue;
         SDL_FRect dst = to_camera_space(*transform, *camera_transform, *camera2d);
-        dst.x += screenW / 2;
-        dst.y += screenH / 2;
+        dst.x += screenW / 2.f;
+        dst.y += screenH / 2.f;
         DrawSprite(renderer, *sprite, dst);
     }
 
@@ -48,8 +48,8 @@ void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world)
         if (!sprite || !transform)
             continue;
         SDL_FRect dst = to_camera_space(*transform, *camera_transform, *camera2d);
-        dst.x += screenW / 2;
-        dst.y += screenH / 2;
+        dst.x += screenW / 2.f;
+        dst.y += screenH / 2.f;
         DrawSprite(renderer, *sprite, dst);
     }
     // Draw bars without textures and without OOP
@@ -71,8 +71,8 @@ void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world)
             Transform2D barTransform = *transform;
             barTransform.sizeX *= 0.1f;
             SDL_FRect dst = to_camera_space(barTransform, *camera_transform, *camera2d);
-            dst.x += screenW / 2;
-            dst.y += screenH / 2;
+            dst.x += screenW / 2.f;
+            dst.y += screenH / 2.f;
             backBars.push_back(dst);
             const float value = float(health->current) / float(health->max);
             dst.y += (1.f - value) * dst.h;
@@ -85,8 +85,8 @@ void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world)
             barTransform.x += barTransform.sizeX * 0.9f;
             barTransform.sizeX *= 0.1f;
             SDL_FRect dst = to_camera_space(barTransform, *camera_transform, *camera2d);
-            dst.x += screenW / 2;
-            dst.y += screenH / 2;
+            dst.x += screenW / 2.f;
+            dst.y += screenH / 2.f;
             backBars.push_back(dst);
             const float value = float(stamina->current) / float(stamina->max);
             dst.y += (1.f - value) * dst.h;

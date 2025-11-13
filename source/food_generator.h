@@ -2,7 +2,6 @@
 
 #include "game_object.h"
 #include "math2d.h"
-#include "food.h"
 #include "dungeon_generator.h"
 
 

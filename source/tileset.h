@@ -1,5 +1,6 @@
 #pragma once
 #include "sprite.h"
+#include <string>
 #include <map>
 
 struct TileSet

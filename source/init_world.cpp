@@ -18,6 +18,7 @@
 #include "tiredness_system.h"
 #include "background_tag.h"
 #include "predator.h"
+#include <iostream>
 
 const int LevelWidth = 120;
 const int LevelHeight = 50;

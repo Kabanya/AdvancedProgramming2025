@@ -1,6 +1,5 @@
 #pragma once
 
-#include "game_object.h"
 #include "transform2d.h"
 #include <SDL3/SDL_rect.h>
 
