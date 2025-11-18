@@ -30,6 +30,19 @@ Build the builds and run them successfully.
 
 ## 2. Data oriented design refactor
 
+### Before refactoring
+#### Debug
+![Debug. Before refactoring](./readme_images/screen_capture_before_refactor_debug.png)
+#### Release
+![Release. Before refactoring](./readme_images/screen_capture_before_refactor_release.png)
+
+### After refactoring
+#### Debug
+![Debug. After refactoring](./readme_images/screen_capture_after_refactor_debug.png)
+#### Release
+![Release. After refactoring](./readme_images/screen_capture_after_refactor_release.png)
+
+
 **DeadLine** - 13.11.25
 **Баллы** - 5
 
