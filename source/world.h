@@ -1,13 +1,16 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+#include <variant>
+
 #include "sprite.h"
 #include "transform2d.h"
 #include "health.h"
 #include "stamina.h"
 #include "camera2d.h"
-#include <memory>
-#include <vector>
-#include <variant>
+#include "fsm.h"
+#include "math2d.h"
 
 // Forward declarations
 class World;
@@ -34,6 +37,8 @@ struct HeroData {
 // NPC/Enemy behavior data
 struct NPCData {
     float accumulatedTime = 0.f;
+    NPCState state;
+    int2 targetPos = {-1, -1}; // Current target position for pathfinding
 };
 
 // NPC type variant
@@ -232,7 +237,15 @@ inline void World::add_npc(const Sprite& sprite, const Transform2D& transform,
     npcs.health.push_back(Health(100));
     npcs.stamina.push_back(Stamina(100));
     npcs.restrictor.push_back(restrictor);
-    npcs.npcData.push_back(NPCData{0.f});
+    
+    // Initialize NPCData with appropriate state based on type
+    NPCData data;
+    data.accumulatedTime = 0.f;
+    data.targetPos = {-1, -1};
+    data.state = std::holds_alternative<NPCConsumer>(type) 
+        ? NPCState(ConsumerState::IDLE) 
+        : NPCState(PredatorState::IDLE);
+    npcs.npcData.push_back(data);
     npcs.npcType.push_back(type);
 }
 

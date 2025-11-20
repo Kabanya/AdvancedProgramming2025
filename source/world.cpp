@@ -1,18 +1,15 @@
+#include <SDL3/SDL.h>
+#include <algorithm>
+
 #include "world.h"
 #include "dungeon_generator.h"
 #include "dungeon_restrictor.h"
-#include "pathfinding.h"
-#include <SDL3/SDL.h>
-#include <algorithm>
-#include <cfloat>
 
-#define ENABLE_NPC_PATHFINDING 1
+// Forward declarations
+void update_consumer_fsm(size_t npc_index, World& world, const int2 directions[4]);
+void update_predator_fsm(size_t npc_index, World& world, const int2 directions[4]);
 
 void World::update(float dt) {
-    // Process deferred removals first
-    process_deferred_removals();
-
-    // Update all systems
     update_hero(dt);
     update_npcs(dt);
     update_food_consumption(dt);
@@ -20,10 +17,11 @@ void World::update(float dt) {
     update_starvation_system(dt);
     update_tiredness_system(dt);
     update_food_generator(dt);
+    process_deferred_removals();
 }
 
 void World::process_deferred_removals() {
-    // Process Hero removals
+    // Process hero removals
     if (!hero.delayedRemove.empty()) {
         std::sort(hero.delayedRemove.begin(), hero.delayedRemove.end(), std::greater<size_t>());
         for (size_t idx : hero.delayedRemove) {
@@ -39,7 +37,7 @@ void World::process_deferred_removals() {
         hero.delayedRemove.clear();
     }
 
-    // Process NPC removals (sort in descending order to remove from back to front)
+    // Process NPC removals
     if (!npcs.delayedRemove.empty()) {
         std::sort(npcs.delayedRemove.begin(), npcs.delayedRemove.end(), std::greater<size_t>());
         for (size_t idx : npcs.delayedRemove) {
@@ -56,7 +54,7 @@ void World::process_deferred_removals() {
         npcs.delayedRemove.clear();
     }
 
-    // Process Food removals
+    // Process food removals
     if (!food.delayedRemove.empty()) {
         std::sort(food.delayedRemove.begin(), food.delayedRemove.end(), std::greater<size_t>());
         for (size_t idx : food.delayedRemove) {
@@ -117,8 +115,6 @@ void World::update_npcs(float dt) {
     const int2 directions[] = { int2{1,0}, int2{-1,0}, int2{0,1}, int2{0,-1} };
 
     for (size_t i = 0; i < npcs.size(); ++i) {
-        auto& transform = npcs.transform[i];
-        auto& restrictor = npcs.restrictor[i];
         auto& stamina = npcs.stamina[i];
         auto& npcData = npcs.npcData[i];
 
@@ -128,105 +124,33 @@ void World::update_npcs(float dt) {
 
         npcData.accumulatedTime -= 1.0f;
 
-#if ENABLE_NPC_PATHFINDING
-        // Если это травоядное - ищем путь к еде
+        // Update FSM based on NPC type
         if (std::holds_alternative<NPCConsumer>(npcs.npcType[i])) {
-            // Найти ближайшую еду
-            size_t closestFood = (size_t)-1;
-            float minDist = FLT_MAX;
-            for (size_t f = 0; f < food.size(); ++f) {
-                float dist = std::abs(transform.x - food.transform[f].x) +
-                             std::abs(transform.y - food.transform[f].y);
-                if (dist < minDist) {
-                    minDist = dist;
-                    closestFood = f;
-                }
-            }
-
-            if (closestFood != (size_t)-1) {
-                int2 start = {(int)transform.x, (int)transform.y};
-                int2 goal = {(int)food.transform[closestFood].x, (int)food.transform[closestFood].y};
-
-                // Используем A* с фильтром для избегания хищников
-                auto path = astar(start, goal,
-                    [&](const int2& pos) { return restrictor->can_pass(pos); },
-                    [&](const int2& pos) {
-                        // Фильтруем клетки с хищниками
-                        for (size_t p = 0; p < npcs.size(); ++p) {
-                            if (std::holds_alternative<NPCPredator>(npcs.npcType[p]) &&
-                                int(npcs.transform[p].x) == pos.x &&
-                                int(npcs.transform[p].y) == pos.y) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    });
-
-                // Двигаемся по пути
-                if (path.size() > 1) {
-                    transform.x = path[1].x;
-                    transform.y = path[1].y;
-                    continue;
-                }
-            }
-        }
-
-        // Если это хищник - ищем путь к травоядным
-        if (std::holds_alternative<NPCPredator>(npcs.npcType[i])) {
-            // Найти ближайшее травоядное
-            size_t closestPrey = (size_t)-1;
-            float minDist = FLT_MAX;
-            for (size_t n = 0; n < npcs.size(); ++n) {
-                if (n == i) continue;
-                if (std::holds_alternative<NPCConsumer>(npcs.npcType[n])) {
-                    float dist = std::abs(transform.x - npcs.transform[n].x) +
-                                std::abs(transform.y - npcs.transform[n].y);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closestPrey = n;
-                    }
-                }
-            }
-
-            if (closestPrey != (size_t)-1) {
-                int2 start = {(int)transform.x, (int)transform.y};
-                int2 goal = {(int)npcs.transform[closestPrey].x, (int)npcs.transform[closestPrey].y};
-
-                // Хищники не используют фильтр - идут напролом
-                auto path = astar(start, goal,
-                    [&](const int2& pos) { return restrictor->can_pass(pos); });
-
-                if (path.size() > 1) {
-                    transform.x = path[1].x;
-                    transform.y = path[1].y;
-                    continue;
-                }
-            }
-        }
-#endif // ENABLE_NPC_PATHFINDING
-
-        //случайное движение
-        int dirIdx = rand() % 4;
-        int2 intDelta = directions[dirIdx];
-        int2 newPos = int2((int)transform.x + intDelta.x, (int)transform.y + intDelta.y);
-
-        if (restrictor->can_pass(newPos)) {
-            transform.x += intDelta.x;
-            transform.y += intDelta.y;
+            update_consumer_fsm(i, *this, directions);
+        } else if (std::holds_alternative<NPCPredator>(npcs.npcType[i])) {
+            update_predator_fsm(i, *this, directions);
         }
     }
 }
 
 void World::update_food_consumption(float dt) {
-    if (hero.size() == 0) return;
-
     // Hero consumes food
     for (size_t h = 0; h < hero.size(); ++h) {
+        bool heroMarkedForRemoval = false;
+        for (size_t idx : hero.delayedRemove) {
+            if (idx == h) {
+                heroMarkedForRemoval = true;
+                break;
+            }
+        }
+        if (heroMarkedForRemoval)
+            continue;
+
         auto& heroTransform = hero.transform[h];
         auto& heroHealth = hero.health[h];
         auto& heroStamina = hero.stamina[h];
+
         for (size_t f = 0; f < food.size(); ++f) {
-            // Check if food is already marked for removal
             bool foodMarkedForRemoval = false;
             for (size_t idx : food.delayedRemove) {
                 if (idx == f) {
@@ -236,33 +160,31 @@ void World::update_food_consumption(float dt) {
             }
             if (foodMarkedForRemoval)
                 continue;
+
             auto& foodTransform = food.transform[f];
+
             // Check collision
             if (int(heroTransform.x) == int(foodTransform.x) &&
                 int(heroTransform.y) == int(foodTransform.y)) {
-                // Consume food based on type
-                std::visit([&](auto&& foodData) {
-                    using T = std::decay_t<decltype(foodData)>;
+                // Apply food effect
+                std::visit([&](auto&& foodType) {
+                    using T = std::decay_t<decltype(foodType)>;
                     if constexpr (std::is_same_v<T, HealthFood>) {
-                        heroHealth.change(foodData.restore);
+                        heroHealth.change(foodType.restore);
                     } else if constexpr (std::is_same_v<T, StaminaFood>) {
-                        heroStamina.change(foodData.restore);
+                        heroStamina.change(foodType.restore);
                     }
                 }, food.foodType[f]);
-                // Mark food for removal
+
                 remove_food(f);
-                break; // Consume only one food at a time
+                break;
             }
         }
     }
 
-    // NPCs consume food (only consumers, not predators)
+    // NPCs consume food
     for (size_t n = 0; n < npcs.size(); ++n) {
-        // Check if this NPC is a consumer
-        if (!std::holds_alternative<NPCConsumer>(npcs.npcType[n]))
-            continue;
-
-        // Check if this NPC is already marked for removal
+        // Skip NPC if already marked for removal
         bool npcMarkedForRemoval = false;
         for (size_t idx : npcs.delayedRemove) {
             if (idx == n) {
@@ -278,7 +200,7 @@ void World::update_food_consumption(float dt) {
         auto& npcStamina = npcs.stamina[n];
 
         for (size_t f = 0; f < food.size(); ++f) {
-            // Check if food is already marked for removal
+            // Skip food if already marked for removal
             bool foodMarkedForRemoval = false;
             for (size_t idx : food.delayedRemove) {
                 if (idx == f) {
@@ -294,20 +216,18 @@ void World::update_food_consumption(float dt) {
             // Check collision
             if (int(npcTransform.x) == int(foodTransform.x) &&
                 int(npcTransform.y) == int(foodTransform.y)) {
-
-                // Consume food based on type
-                std::visit([&](auto&& foodData) {
-                    using T = std::decay_t<decltype(foodData)>;
+                // Apply food effect
+                std::visit([&](auto&& foodType) {
+                    using T = std::decay_t<decltype(foodType)>;
                     if constexpr (std::is_same_v<T, HealthFood>) {
-                        npcHealth.change(foodData.restore);
+                        npcHealth.change(foodType.restore);
                     } else if constexpr (std::is_same_v<T, StaminaFood>) {
-                        npcStamina.change(foodData.restore);
+                        npcStamina.change(foodType.restore);
                     }
                 }, food.foodType[f]);
 
-                // Mark food for removal
                 remove_food(f);
-                break; // Consume only one food at a time
+                break;
             }
         }
     }
@@ -393,67 +313,67 @@ void World::update_predators(float dt) {
 
 void World::update_starvation_system(float dt) {
     starvationSystem.accumulator += dt;
-    if (starvationSystem.accumulator < starvationSystem.damageInterval)
-        return;
+    if (starvationSystem.accumulator >= starvationSystem.damageInterval) {
+        starvationSystem.accumulator -= starvationSystem.damageInterval;
 
-    starvationSystem.accumulator -= starvationSystem.damageInterval;
-
-    // Damage hero
-    for (size_t i = 0; i < hero.size(); ++i) {
-        hero.health[i].change(-starvationSystem.damageAmount);
-        if (hero.health[i].current <= 0) {
-            // Hero died - mark for removal
-            hero.delayedRemove.push_back(i);
+        // Apply starvation damage to hero
+        for (size_t h = 0; h < hero.size(); ++h) {
+            if (hero.stamina[h].current <= 0) {
+                hero.health[h].change(-starvationSystem.damageAmount);
+                if (hero.health[h].current <= 0) {
+                    hero.delayedRemove.push_back(h);
+                }
+            }
         }
-    }
 
-    // Damage NPCs
-    for (size_t i = 0; i < npcs.size(); ++i) {
-        npcs.health[i].change(-starvationSystem.damageAmount);
-        if (npcs.health[i].current <= 0) {
-            remove_npc(i);
+        // Apply starvation damage to NPCs
+        for (size_t n = 0; n < npcs.size(); ++n) {
+            if (npcs.stamina[n].current <= 0) {
+                npcs.health[n].change(-starvationSystem.damageAmount);
+                if (npcs.health[n].current <= 0) {
+                    remove_npc(n);
+                }
+            }
         }
     }
 }
 
 void World::update_tiredness_system(float dt) {
     tirednessSystem.accumulator += dt;
-    if (tirednessSystem.accumulator < tirednessSystem.tirednessInterval)
-        return;
+    if (tirednessSystem.accumulator >= tirednessSystem.tirednessInterval) {
+        tirednessSystem.accumulator -= tirednessSystem.tirednessInterval;
 
-    tirednessSystem.accumulator -= tirednessSystem.tirednessInterval;
+        // Decrease stamina for hero
+        for (size_t h = 0; h < hero.size(); ++h) {
+            hero.stamina[h].change(-tirednessSystem.tirednessAmount);
+        }
 
-    // Drain stamina from hero
-    for (size_t i = 0; i < hero.size(); ++i) {
-        hero.stamina[i].change(-tirednessSystem.tirednessAmount);
-    }
-
-    // Drain stamina from NPCs
-    for (size_t i = 0; i < npcs.size(); ++i) {
-        npcs.stamina[i].change(-tirednessSystem.tirednessAmount);
+        // Decrease stamina for NPCs
+        for (size_t n = 0; n < npcs.size(); ++n) {
+            npcs.stamina[n].change(-tirednessSystem.tirednessAmount);
+        }
     }
 }
 
 void World::update_food_generator(float dt) {
     foodGenerator.timeSinceLastSpawn += dt;
-    if (foodGenerator.timeSinceLastSpawn < foodGenerator.spawnInterval)
-        return;
+    if (foodGenerator.timeSinceLastSpawn >= foodGenerator.spawnInterval) {
+        foodGenerator.timeSinceLastSpawn -= foodGenerator.spawnInterval;
 
-    foodGenerator.timeSinceLastSpawn = 0.f;
+        if (!foodGenerator.dungeon || foodGenerator.foodTypes.empty())
+            return;
 
-    if (!foodGenerator.dungeon || foodGenerator.foodTypes.empty())
-        return;
+        // Generate random food
+        auto position = foodGenerator.dungeon->getRandomFloorPosition();
 
-    // Generate random food
-    auto position = foodGenerator.dungeon->getRandomFloorPosition();
-
-    // Select random food type based on weights
-    int randValue = rand() % foodGenerator.totalWeight;
-    for (const auto& foodTypeInfo : foodGenerator.foodTypes) {
-        if (randValue < foodTypeInfo.weight) {
-            add_food(foodTypeInfo.sprite, Transform2D(position.x, position.y), foodTypeInfo.foodType);
-            break;
+        // Select random food type based on weights
+        int randValue = rand() % foodGenerator.totalWeight;
+        for (const auto& foodTypeInfo : foodGenerator.foodTypes) {
+            if (randValue < foodTypeInfo.weight) {
+                add_food(foodTypeInfo.sprite, Transform2D(position.x, position.y), foodTypeInfo.foodType);
+                break;
+            }
+            randValue -= foodTypeInfo.weight;
         }
-        randValue -= foodTypeInfo.weight;
     }
 }
