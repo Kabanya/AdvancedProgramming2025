@@ -5,9 +5,20 @@
 #include "dungeon_generator.h"
 #include "dungeon_restrictor.h"
 
-// Forward declarations
-void update_consumer_fsm(size_t npc_index, World& world, const int2 directions[4]);
-void update_predator_fsm(size_t npc_index, World& world, const int2 directions[4]);
+
+#define USE_BEHAVIOUR_TREE 1 // else FINITE STATE MACHINE
+
+#if USE_BEHAVIOUR_TREE
+    #include "bt.h"
+    // Forward declarations for BT
+    BTStatus update_consumer_bt(size_t npc_index, World& world, const int2 directions[4]);
+    BTStatus update_predator_bt(size_t npc_index, World& world, const int2 directions[4]);
+#else
+    #include "fsm.h"
+    // Forward declarations for FSM
+    void update_consumer_fsm(size_t npc_index, World& world, const int2 directions[4]);
+    void update_predator_fsm(size_t npc_index, World& world, const int2 directions[4]);
+#endif
 
 void World::update(float dt) {
     update_hero(dt);
@@ -124,12 +135,21 @@ void World::update_npcs(float dt) {
 
         npcData.accumulatedTime -= 1.0f;
 
+#if USE_BEHAVIOUR_TREE
+        // Update Behaviour Tree based on NPC type
+        if (std::holds_alternative<NPCConsumer>(npcs.npcType[i])) {
+            update_consumer_bt(i, *this, directions);
+        } else if (std::holds_alternative<NPCPredator>(npcs.npcType[i])) {
+            update_predator_bt(i, *this, directions);
+        }
+#else
         // Update FSM based on NPC type
         if (std::holds_alternative<NPCConsumer>(npcs.npcType[i])) {
             update_consumer_fsm(i, *this, directions);
         } else if (std::holds_alternative<NPCPredator>(npcs.npcType[i])) {
             update_predator_fsm(i, *this, directions);
         }
+#endif
     }
 }
 
