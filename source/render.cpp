@@ -5,6 +5,7 @@
 #include "stamina.h"
 #include <SDL3/SDL_render.h>
 
+
 void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world)
 {
     int screenW, screenH;

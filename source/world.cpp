@@ -25,6 +25,7 @@ void World::update(float dt) {
     update_npcs(dt);
     update_food_consumption(dt);
     update_predators(dt);
+    update_reproduction(dt);
     update_starvation_system(dt);
     update_tiredness_system(dt);
     update_food_generator(dt);
@@ -371,6 +372,101 @@ void World::update_tiredness_system(float dt) {
         // Decrease stamina for NPCs
         for (size_t n = 0; n < npcs.size(); ++n) {
             npcs.stamina[n].change(-tirednessSystem.tirednessAmount);
+        }
+    }
+}
+
+void World::update_reproduction(float dt) {
+    // Check for NPCs in the same location that can reproduce
+    for (size_t i = 0; i < npcs.size(); ++i) {
+        // Skip if already marked for removal
+        bool iMarkedForRemoval = false;
+        for (size_t idx : npcs.delayedRemove) {
+            if (idx == i) {
+                iMarkedForRemoval = true;
+                break;
+            }
+        }
+        if (iMarkedForRemoval)
+            continue;
+
+        // Check if this NPC is ready to reproduce (health > 90)
+        if (npcs.health[i].current <= 90)
+            continue;
+
+        auto& transform_i = npcs.transform[i];
+        auto& type_i = npcs.npcType[i];
+
+        // Look for a mate
+        for (size_t j = i + 1; j < npcs.size(); ++j) {
+            // Skip if already marked for removal
+            bool jMarkedForRemoval = false;
+            for (size_t idx : npcs.delayedRemove) {
+                if (idx == j) {
+                    jMarkedForRemoval = true;
+                    break;
+                }
+            }
+            if (jMarkedForRemoval)
+                continue;
+
+            // Check if mate is ready to reproduce
+            if (npcs.health[j].current <= 90)
+                continue;
+
+            auto& transform_j = npcs.transform[j];
+            auto& type_j = npcs.npcType[j];
+
+            // Check if same type
+            bool sameType = false;
+            if (std::holds_alternative<NPCConsumer>(type_i) && 
+                std::holds_alternative<NPCConsumer>(type_j)) {
+                sameType = true;
+            } else if (std::holds_alternative<NPCPredator>(type_i) && 
+                       std::holds_alternative<NPCPredator>(type_j)) {
+                sameType = true;
+            }
+
+            if (!sameType)
+                continue;
+
+            // Check if in the same cell
+            if (int(transform_i.x) == int(transform_j.x) &&
+                int(transform_i.y) == int(transform_j.y)) {
+                
+                // Calculate offspring health (1/3 from each parent)
+                int healthFromParent1 = npcs.health[i].current / 3;
+                int healthFromParent2 = npcs.health[j].current / 3;
+                int offspringHealth = healthFromParent1 + healthFromParent2;
+
+                // Deduct health from parents
+                npcs.health[i].change(-healthFromParent1);
+                npcs.health[j].change(-healthFromParent2);
+
+                // Create offspring of the same type
+                Sprite offspringSprite = npcs.sprite[i]; // Use parent's sprite
+                Transform2D offspringTransform = transform_i; // Same position
+                
+                // Add offspring
+                npcs.sprite.push_back(offspringSprite);
+                npcs.transform.push_back(offspringTransform);
+                npcs.health.push_back(Health(offspringHealth));
+                npcs.stamina.push_back(Stamina(100));
+                npcs.restrictor.push_back(npcs.restrictor[i]);
+                
+                // Initialize NPCData with appropriate state based on type
+                NPCData data;
+                data.accumulatedTime = 0.f;
+                data.targetPos = {-1, -1};
+                data.state = std::holds_alternative<NPCConsumer>(type_i) 
+                    ? NPCState(ConsumerState::IDLE) 
+                    : NPCState(PredatorState::IDLE);
+                npcs.npcData.push_back(data);
+                npcs.npcType.push_back(type_i);
+
+                // Each pair can only reproduce once per update
+                break;
+            }
         }
     }
 }

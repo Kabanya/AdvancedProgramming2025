@@ -209,6 +209,7 @@ private:
     void update_npcs(float dt);
     void update_food_consumption(float dt);
     void update_predators(float dt);
+    void update_reproduction(float dt);
     void update_starvation_system(float dt);
     void update_tiredness_system(float dt);
     void update_food_generator(float dt);

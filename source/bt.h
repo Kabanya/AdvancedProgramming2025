@@ -24,6 +24,8 @@ namespace BTConfig {
     constexpr float THREAT_RANGE = 5.0f;
     constexpr float HUNGER_THRESHOLD = 50.0f;
     constexpr float HUNT_RANGE = 8.0f;
+    constexpr int REPRODUCTION_THRESHOLD = 90;
+    constexpr float MATE_SEARCH_RANGE = 10.0f;
 }
 
 template<typename Derived>
@@ -202,6 +204,44 @@ inline bool find_prey(BTContext& ctx, int2& prey_pos, bool& is_hero) {
     }
 
     return found && minDist < BTConfig::HUNT_RANGE;
+}
+
+inline bool ready_to_reproduce(BTContext& ctx) {
+    auto& health = ctx.world->npcs.health[ctx.npc_index];
+    return health.current > BTConfig::REPRODUCTION_THRESHOLD;
+}
+
+inline bool find_mate(BTContext& ctx, int2& mate_pos, size_t& mate_index) {
+    auto& transform = ctx.world->npcs.transform[ctx.npc_index];
+    auto& myType = ctx.world->npcs.npcType[ctx.npc_index];
+    float minDist = BTConfig::MATE_SEARCH_RANGE;
+    bool found = false;
+
+    for (size_t n = 0; n < ctx.world->npcs.size(); ++n) {
+        if (n == ctx.npc_index) continue;
+        // Check if same type
+        bool sameType = false;
+        if (std::holds_alternative<NPCConsumer>(myType) &&
+            std::holds_alternative<NPCConsumer>(ctx.world->npcs.npcType[n])) {
+            sameType = true;
+        } else if (std::holds_alternative<NPCPredator>(myType) &&
+                   std::holds_alternative<NPCPredator>(ctx.world->npcs.npcType[n])) {
+            sameType = true;
+        }
+        if (!sameType) continue;
+        // Check if mate is also ready to reproduce
+        if (ctx.world->npcs.health[n].current <= BTConfig::REPRODUCTION_THRESHOLD) continue;
+
+        float dist = std::abs(transform.x - ctx.world->npcs.transform[n].x) +
+                    std::abs(transform.y - ctx.world->npcs.transform[n].y);
+        if (dist < minDist) {
+            minDist = dist;
+            mate_pos = {(int)ctx.world->npcs.transform[n].x, (int)ctx.world->npcs.transform[n].y};
+            mate_index = n;
+            found = true;
+        }
+    }
+    return found;
 }
 BTStatus update_consumer_bt(size_t npc_index, World& world, const int2 directions[4]);
 BTStatus update_predator_bt(size_t npc_index, World& world, const int2 directions[4]);

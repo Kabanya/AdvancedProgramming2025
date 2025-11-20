@@ -12,8 +12,6 @@ BTStatus update_consumer_bt(size_t npc_index, World& world, const int2 direction
     ctx.directions = directions;
     ctx.moved = false;
 
-    // Define behavior nodes using templates
-
     // Condition: Check if predator is nearby
     auto check_predator = Condition([](BTContext& ctx) -> bool {
         int2 predator_pos;
@@ -66,6 +64,45 @@ BTStatus update_consumer_bt(size_t npc_index, World& world, const int2 direction
 
     // Sequence: Flee behavior
     auto flee_behavior = Sequence(check_predator, flee_action);
+
+    // Condition: Check if ready to reproduce
+    auto check_ready_reproduce = Condition([](BTContext& ctx) -> bool {
+        return ready_to_reproduce(ctx);
+    });
+
+    // Action: Seek mate
+    auto seek_mate_action = Action([](BTContext& ctx) {
+        auto& transform = ctx.world->npcs.transform[ctx.npc_index];
+        auto& restrictor = ctx.world->npcs.restrictor[ctx.npc_index];
+#if ENABLE_NPC_PATHFINDING
+        int2 mate_pos;
+        size_t mate_index;
+        if (find_mate(ctx, mate_pos, mate_index)) {
+            int2 start = {(int)transform.x, (int)transform.y};
+            int2 goal = mate_pos;
+            auto path = astar(start, goal,
+                [&](const int2& pos) { return restrictor->can_pass(pos); });
+            if (path.size() > 1) {
+                transform.x = path[1].x;
+                transform.y = path[1].y;
+                ctx.moved = true;
+            } else {
+                // Fallback: random movement if path not found
+                int dirIdx = rand() % 4;
+                int2 intDelta = ctx.directions[dirIdx];
+                int2 newPos = int2((int)transform.x + intDelta.x, (int)transform.y + intDelta.y);
+                if (restrictor->can_pass(newPos)) {
+                    transform.x += intDelta.x;
+                    transform.y += intDelta.y;
+                    ctx.moved = true;
+                }
+            }
+        }
+#endif
+    });
+
+    // Sequence: Reproduction behavior
+    auto reproduction_behavior = Sequence(check_ready_reproduce, seek_mate_action);
 
     // Condition: Check if hungry
     auto check_hungry = Condition([](BTContext& ctx) -> bool {
@@ -136,6 +173,7 @@ BTStatus update_consumer_bt(size_t npc_index, World& world, const int2 direction
     // Main tree: Selector with priority behaviors
     auto consumer_tree = Selector(
         flee_behavior,
+        reproduction_behavior,
         seek_food_behavior,
         idle_behavior
     );
@@ -149,6 +187,45 @@ BTStatus update_predator_bt(size_t npc_index, World& world, const int2 direction
     ctx.npc_index = npc_index;
     ctx.directions = directions;
     ctx.moved = false;
+
+    // Condition: Check if ready to reproduce
+    auto check_ready_reproduce = Condition([](BTContext& ctx) -> bool {
+        return ready_to_reproduce(ctx);
+    });
+
+    // Action: Seek mate
+    auto seek_mate_action = Action([](BTContext& ctx) {
+        auto& transform = ctx.world->npcs.transform[ctx.npc_index];
+        auto& restrictor = ctx.world->npcs.restrictor[ctx.npc_index];
+#if ENABLE_NPC_PATHFINDING
+        int2 mate_pos;
+        size_t mate_index;
+        if (find_mate(ctx, mate_pos, mate_index)) {
+            int2 start = {(int)transform.x, (int)transform.y};
+            int2 goal = mate_pos;
+            auto path = astar(start, goal,
+                [&](const int2& pos) { return restrictor->can_pass(pos); });
+            if (path.size() > 1) {
+                transform.x = path[1].x;
+                transform.y = path[1].y;
+                ctx.moved = true;
+            } else {
+                // Fallback: random movement if path not found
+                int dirIdx = rand() % 4;
+                int2 intDelta = ctx.directions[dirIdx];
+                int2 newPos = int2((int)transform.x + intDelta.x, (int)transform.y + intDelta.y);
+                if (restrictor->can_pass(newPos)) {
+                    transform.x += intDelta.x;
+                    transform.y += intDelta.y;
+                    ctx.moved = true;
+                }
+            }
+        }
+#endif
+    });
+
+    // Sequence: Reproduction behavior
+    auto reproduction_behavior = Sequence(check_ready_reproduce, seek_mate_action);
 
     // Condition: Check if prey is in range
     auto check_prey = Condition([](BTContext& ctx) -> bool {
@@ -201,9 +278,11 @@ BTStatus update_predator_bt(size_t npc_index, World& world, const int2 direction
         }
     });
 
-    // Main tree: Selector with hunt and idle behaviors
+    // Main tree: Selector with hunt, reproduction and idle behaviors
+    // Hunt has higher priority than reproduction to prevent predators from getting stuck
     auto predator_tree = Selector(
         hunt_behavior,
+        reproduction_behavior,
         idle_behavior
     );
 

@@ -45,6 +45,12 @@ void update_consumer_fsm(
             currentState = ConsumerState::FLEEING;
             npcData.targetPos = nearestPredatorPos;
         }
+    } else if (ready_to_reproduce(health.current)) {
+        if (currentState != ConsumerState::SEEKING_MATE) {
+            npcData.state = ConsumerState::SEEKING_MATE;
+            currentState = ConsumerState::SEEKING_MATE;
+            npcData.targetPos = {-1, -1};
+        }
     } else if (is_hungry(health.current, stamina.current)) {
         if (currentState != ConsumerState::SEEKING_FOOD) {
             npcData.state = ConsumerState::SEEKING_FOOD;
@@ -132,6 +138,50 @@ void update_consumer_fsm(
                 moved = true;
             }
         }
+    } else if (currentState == ConsumerState::SEEKING_MATE) {
+        // Find nearest mate of the same type
+        size_t closestMate = (size_t)-1;
+        float minDist = FSMConfig::MATE_SEARCH_RANGE;
+        for (size_t m = 0; m < world.npcs.size(); ++m) {
+            if (m == npc_index) continue;
+            
+            // Check if same type (consumer)
+            if (!std::holds_alternative<NPCConsumer>(world.npcs.npcType[m])) continue;
+            
+            // Check if mate is ready to reproduce
+            if (world.npcs.health[m].current <= FSMConfig::REPRODUCTION_THRESHOLD) continue;
+            
+            float dist = std::abs(transform.x - world.npcs.transform[m].x) +
+                        std::abs(transform.y - world.npcs.transform[m].y);
+            if (dist < minDist) {
+                minDist = dist;
+                closestMate = m;
+            }
+        }
+
+        if (closestMate != (size_t)-1) {
+            int2 start = {(int)transform.x, (int)transform.y};
+            int2 goal = {(int)world.npcs.transform[closestMate].x, (int)world.npcs.transform[closestMate].y};
+
+            auto path = astar(start, goal,
+                [&](const int2& pos) { return restrictor->can_pass(pos); });
+
+            if (path.size() > 1) {
+                transform.x = path[1].x;
+                transform.y = path[1].y;
+                moved = true;
+            } else {
+                // Fallback: random movement if path not found
+                int dirIdx = rand() % 4;
+                int2 intDelta = directions[dirIdx];
+                int2 newPos = int2((int)transform.x + intDelta.x, (int)transform.y + intDelta.y);
+                if (restrictor->can_pass(newPos)) {
+                    transform.x += intDelta.x;
+                    transform.y += intDelta.y;
+                    moved = true;
+                }
+            }
+        }
     }
 #endif // ENABLE_NPC_PATHFINDING
 
@@ -189,10 +239,17 @@ void update_predator_fsm(
     }
 
     // State transitions
+    // Hunt has higher priority than reproduction to prevent predators from getting stuck
     if (closestPrey != (size_t)-1 && prey_in_range(minDist)) {
         if (currentState != PredatorState::HUNTING) {
             npcData.state = PredatorState::HUNTING;
             currentState = PredatorState::HUNTING;
+        }
+    } else if (ready_to_reproduce(world.npcs.health[npc_index].current)) {
+        if (currentState != PredatorState::SEEKING_MATE) {
+            npcData.state = PredatorState::SEEKING_MATE;
+            currentState = PredatorState::SEEKING_MATE;
+            npcData.targetPos = {-1, -1};
         }
     } else {
         if (currentState != PredatorState::IDLE) {
@@ -222,6 +279,50 @@ void update_predator_fsm(
             transform.x = path[1].x;
             transform.y = path[1].y;
             moved = true;
+        }
+    } else if (currentState == PredatorState::SEEKING_MATE) {
+        // Find nearest mate of the same type
+        size_t closestMate = (size_t)-1;
+        float minDist = FSMConfig::MATE_SEARCH_RANGE;
+        for (size_t m = 0; m < world.npcs.size(); ++m) {
+            if (m == npc_index) continue;
+            
+            // Check if same type (predator)
+            if (!std::holds_alternative<NPCPredator>(world.npcs.npcType[m])) continue;
+            
+            // Check if mate is ready to reproduce
+            if (world.npcs.health[m].current <= FSMConfig::REPRODUCTION_THRESHOLD) continue;
+            
+            float dist = std::abs(transform.x - world.npcs.transform[m].x) +
+                        std::abs(transform.y - world.npcs.transform[m].y);
+            if (dist < minDist) {
+                minDist = dist;
+                closestMate = m;
+            }
+        }
+
+        if (closestMate != (size_t)-1) {
+            int2 start = {(int)transform.x, (int)transform.y};
+            int2 goal = {(int)world.npcs.transform[closestMate].x, (int)world.npcs.transform[closestMate].y};
+
+            auto path = astar(start, goal,
+                [&](const int2& pos) { return restrictor->can_pass(pos); });
+
+            if (path.size() > 1) {
+                transform.x = path[1].x;
+                transform.y = path[1].y;
+                moved = true;
+            } else {
+                // Fallback: random movement if path not found
+                int dirIdx = rand() % 4;
+                int2 intDelta = directions[dirIdx];
+                int2 newPos = int2((int)transform.x + intDelta.x, (int)transform.y + intDelta.y);
+                if (restrictor->can_pass(newPos)) {
+                    transform.x += intDelta.x;
+                    transform.y += intDelta.y;
+                    moved = true;
+                }
+            }
         }
     }
 #endif // ENABLE_NPC_PATHFINDING
