@@ -1,8 +1,12 @@
 #include "world.h"
 #include "dungeon_generator.h"
 #include "dungeon_restrictor.h"
+#include "pathfinding.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <cfloat>
+
+#define ENABLE_NPC_PATHFINDING 1
 
 void World::update(float dt) {
     // Process deferred removals first
@@ -124,7 +128,84 @@ void World::update_npcs(float dt) {
 
         npcData.accumulatedTime -= 1.0f;
 
-        // Try to move in a random direction
+#if ENABLE_NPC_PATHFINDING
+        // Если это травоядное - ищем путь к еде
+        if (std::holds_alternative<NPCConsumer>(npcs.npcType[i])) {
+            // Найти ближайшую еду
+            size_t closestFood = (size_t)-1;
+            float minDist = FLT_MAX;
+            for (size_t f = 0; f < food.size(); ++f) {
+                float dist = std::abs(transform.x - food.transform[f].x) +
+                             std::abs(transform.y - food.transform[f].y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestFood = f;
+                }
+            }
+
+            if (closestFood != (size_t)-1) {
+                int2 start = {(int)transform.x, (int)transform.y};
+                int2 goal = {(int)food.transform[closestFood].x, (int)food.transform[closestFood].y};
+
+                // Используем A* с фильтром для избегания хищников
+                auto path = astar(start, goal,
+                    [&](const int2& pos) { return restrictor->can_pass(pos); },
+                    [&](const int2& pos) {
+                        // Фильтруем клетки с хищниками
+                        for (size_t p = 0; p < npcs.size(); ++p) {
+                            if (std::holds_alternative<NPCPredator>(npcs.npcType[p]) &&
+                                int(npcs.transform[p].x) == pos.x &&
+                                int(npcs.transform[p].y) == pos.y) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+
+                // Двигаемся по пути
+                if (path.size() > 1) {
+                    transform.x = path[1].x;
+                    transform.y = path[1].y;
+                    continue;
+                }
+            }
+        }
+
+        // Если это хищник - ищем путь к травоядным
+        if (std::holds_alternative<NPCPredator>(npcs.npcType[i])) {
+            // Найти ближайшее травоядное
+            size_t closestPrey = (size_t)-1;
+            float minDist = FLT_MAX;
+            for (size_t n = 0; n < npcs.size(); ++n) {
+                if (n == i) continue;
+                if (std::holds_alternative<NPCConsumer>(npcs.npcType[n])) {
+                    float dist = std::abs(transform.x - npcs.transform[n].x) +
+                                std::abs(transform.y - npcs.transform[n].y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestPrey = n;
+                    }
+                }
+            }
+
+            if (closestPrey != (size_t)-1) {
+                int2 start = {(int)transform.x, (int)transform.y};
+                int2 goal = {(int)npcs.transform[closestPrey].x, (int)npcs.transform[closestPrey].y};
+
+                // Хищники не используют фильтр - идут напролом
+                auto path = astar(start, goal,
+                    [&](const int2& pos) { return restrictor->can_pass(pos); });
+
+                if (path.size() > 1) {
+                    transform.x = path[1].x;
+                    transform.y = path[1].y;
+                    continue;
+                }
+            }
+        }
+#endif // ENABLE_NPC_PATHFINDING
+
+        //случайное движение
         int dirIdx = rand() % 4;
         int2 intDelta = directions[dirIdx];
         int2 newPos = int2((int)transform.x + intDelta.x, (int)transform.y + intDelta.y);
@@ -180,7 +261,7 @@ void World::update_food_consumption(float dt) {
         // Check if this NPC is a consumer
         if (!std::holds_alternative<NPCConsumer>(npcs.npcType[n]))
             continue;
-        
+
         // Check if this NPC is already marked for removal
         bool npcMarkedForRemoval = false;
         for (size_t idx : npcs.delayedRemove) {
@@ -191,11 +272,11 @@ void World::update_food_consumption(float dt) {
         }
         if (npcMarkedForRemoval)
             continue;
-            
+
         auto& npcTransform = npcs.transform[n];
         auto& npcHealth = npcs.health[n];
         auto& npcStamina = npcs.stamina[n];
-        
+
         for (size_t f = 0; f < food.size(); ++f) {
             // Check if food is already marked for removal
             bool foodMarkedForRemoval = false;
@@ -207,13 +288,13 @@ void World::update_food_consumption(float dt) {
             }
             if (foodMarkedForRemoval)
                 continue;
-            
+
             auto& foodTransform = food.transform[f];
-            
+
             // Check collision
             if (int(npcTransform.x) == int(foodTransform.x) &&
                 int(npcTransform.y) == int(foodTransform.y)) {
-                
+
                 // Consume food based on type
                 std::visit([&](auto&& foodData) {
                     using T = std::decay_t<decltype(foodData)>;
@@ -223,7 +304,7 @@ void World::update_food_consumption(float dt) {
                         npcStamina.change(foodData.restore);
                     }
                 }, food.foodType[f]);
-                
+
                 // Mark food for removal
                 remove_food(f);
                 break; // Consume only one food at a time
@@ -238,7 +319,7 @@ void World::update_predators(float dt) {
         // Check if this NPC is a predator
         if (!std::holds_alternative<NPCPredator>(npcs.npcType[p]))
             continue;
-        
+
         // Check if this predator was already marked for removal
         bool predatorMarkedForRemoval = false;
         for (size_t idx : npcs.delayedRemove) {
