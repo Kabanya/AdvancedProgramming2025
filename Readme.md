@@ -96,8 +96,50 @@ world.tiles.transform.push_back(Transform2D(j, i));
 
 ## 4. Task system, thread-pool
 
-**DeadLine** - 27.11.25
+**DeadLine** - 4.12.25
 **Баллы** - 4
+
+Разбалловка
+- 1 балл. Разбейте обновление мира на N функций. Обеспечьте потокобезопасность каждой из них с помощью глобального std::mutex g_worldMutex (см. пример 1 ниже). Добавьте вариант обновления мира world_update_threaded, который будет создавать по треду на каждую функцию обновления (см. пример 2 ниже). Прикрепите скриншоты или .opt файлы debug билда (release опционально) до и после. Это задание исследует какой оверхед создает создание новых потоков на практике 
+
+```
+extern std::mutex g_worldMutex;
+void update_hero_input(World &world, float dt);
+
+void update_hero_input_ts(World& world, float dt)
+{
+    std::lock_guard<std::mutex> lock(g_worldMutex);
+    update_hero_input(world, dt);
+}
+```
+
+```
+void world_update_threaded(World& world, float dt)
+{
+    std::thread t([&]() {
+        hero_input_system(world, dt);
+    });
+    ...
+    t.join();
+}
+```
+
+- 1 балл. Реализовать (взять готовый) thread pool и реализовать world_update_thread_pool, который будет использовать пул потоков вместо создания новых тредов каждый кадр. Прикрепите скриншоты или .opt файлы debug билда (release опционально) до и после. Целью данного задания является проверить на практике эффективность пула потоков.
+
+```
+void world_update_thread_pool(World& world, float dt)
+{
+    g_threadPool.add_task([&]() {
+        hero_input_system(world, dt);
+    });
+    ...
+    g_threadPool.wait_all_task_done();
+}
+```
+
+- 1 балл. сравнение mutex vs spinlock. Реализуйте сами или [возьмите](https://gist.github.com/glampert/744b8b4d76350e71eed9d0b3b98b0b1d) реализацию spinlock'а и замените использование std::mutex на ваш spinlock. Прикрепите скриншоты или .opt файлы debug билда (release опционально) до и после. Цель задания сравнить мьютекс, который может переходить в сон со spinlock'ом, будет ли видна разница на нашей демке.
+
+- 1 балл. Реализуйте регенерацию мира по клавише R. В качестве синхронизации используйте RCU подход. Но только вместо копирования мира просто сгенерируйте новый
 
 ## 5. Network application
 
