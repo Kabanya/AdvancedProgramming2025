@@ -4,7 +4,7 @@
 #include <vector>
 #include <variant>
 #include <mutex>
-#include "thread_pool.h"
+// #include "thread_pool.h"
 
 #include "sprite.h"
 #include "transform2d.h"
@@ -14,11 +14,8 @@
 #include "fsm.h"
 #include "math2d.h"
 
-
-std::mutex g_worldMutex;
-std::lock_guard<std::mutex> lock(g_worldMutex);
-ThreadPool g_threadPool(4);
-
+extern std::mutex g_worldMutex;
+// extern ThreadPool g_threadPool(4);
 
 // Forward declarations
 class World;
@@ -197,6 +194,7 @@ public:
     FoodGeneratorData foodGenerator;
 
     void update(float dt);
+    void update_ts(float dt);
     void world_update_thread_pool(float dt);
 
     // Helper methods for adding entities
@@ -212,7 +210,7 @@ public:
     void remove_npc(size_t index);
     void remove_food(size_t index);
 
-private:
+private: // Standard versions
     void process_deferred_removals();
     void update_hero(float dt);
     void update_npcs(float dt);
@@ -222,6 +220,18 @@ private:
     void update_starvation_system(float dt);
     void update_tiredness_system(float dt);
     void update_food_generator(float dt);
+
+private: // Thread-safe versions
+    void process_deferred_removals_ts();
+    void update_hero_ts(float dt);
+    void update_npcs_ts(float dt);
+    void update_food_consumption_ts(float dt);
+    void update_predators_ts(float dt);
+    void update_reproduction_ts(float dt);
+    void update_starvation_system_ts(float dt);
+    void update_tiredness_system_ts(float dt);
+    void update_food_generator_ts(float dt);
+
 };
 
 // Inline implementations

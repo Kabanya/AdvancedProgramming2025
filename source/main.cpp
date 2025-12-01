@@ -60,10 +60,18 @@ int main(int argc, char* argv[])
             Uint64 now = SDL_GetTicks();
             float deltaTime = (now - lastTicks) / 1000.0f;
             lastTicks = now;
+
+#if USE_MUTEX_FOR_WORLD
             {
                 OPTICK_EVENT("world.update");
                 world.update(deltaTime);
             }
+#else
+            {
+                OPTICK_EVENT("world.update.mutex.edition");
+                world.update_ts(deltaTime);
+            }
+#endif
 
             // Теперь сразу цвет внутри Clear
             SDL_SetRenderDrawColor(renderer, 50, 50, 150, 255);
