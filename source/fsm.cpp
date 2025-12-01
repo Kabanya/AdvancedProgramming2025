@@ -4,7 +4,7 @@
 
 #include "fsm.h"
 #include "world.h"
-#include "dungeon_restrictor.h"
+#include "dungeon_restrictor.h" // IWYU pragma: keep
 #include "pathfinding.h"
 #include "math2d.h"
 

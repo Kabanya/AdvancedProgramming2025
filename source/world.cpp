@@ -1,12 +1,15 @@
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <mutex>
 
 #include "world.h"
-#include "dungeon_generator.h"
-#include "dungeon_restrictor.h"
-
+#include "dungeon_generator.h"  // IWYU pragma: keep
+#include "dungeon_restrictor.h" // IWYU pragma: keep
+#include "thread_pool.h"
 
 #define USE_BEHAVIOUR_TREE 1 // else FINITE STATE MACHINE
+#define USE_THREAD_POOL 1 // else STANDARD SINGLE THREAD
+
 
 #if USE_BEHAVIOUR_TREE
     #include "bt.h"
@@ -20,17 +23,24 @@
     void update_predator_fsm(size_t npc_index, World& world, const int2 directions[4]);
 #endif
 
-void World::update(float dt) {
-    update_hero(dt);
-    update_npcs(dt);
-    update_food_consumption(dt);
-    update_predators(dt);
-    update_reproduction(dt);
-    update_starvation_system(dt);
-    update_tiredness_system(dt);
-    update_food_generator(dt);
-    process_deferred_removals();
-}
+#if USE_THREAD_POOL
+    #include "thread_pool.h"
+    void World::world_update_thread_pool(float dt) {
+        g_threadPool.Start();
+    }
+#else
+    void World::update(float dt) {
+        update_hero(dt);
+        update_npcs(dt);
+        update_food_consumption(dt);
+        update_predators(dt);
+        update_reproduction(dt);
+        update_starvation_system(dt);
+        update_tiredness_system(dt);
+        update_food_generator(dt);
+        process_deferred_removals();
+    }
+#endif
 
 void World::process_deferred_removals() {
     // Process hero removals
@@ -433,7 +443,7 @@ void World::update_reproduction(float dt) {
             // Check if in the same cell
             if (int(transform_i.x) == int(transform_j.x) &&
                 int(transform_i.y) == int(transform_j.y)) {
-                
+
                 // Calculate offspring health (1/3 from each parent)
                 int healthFromParent1 = npcs.health[i].current / 3;
                 int healthFromParent2 = npcs.health[j].current / 3;
@@ -446,20 +456,20 @@ void World::update_reproduction(float dt) {
                 // Create offspring of the same type
                 Sprite offspringSprite = npcs.sprite[i]; // Use parent's sprite
                 Transform2D offspringTransform = transform_i; // Same position
-                
+
                 // Add offspring
                 npcs.sprite.push_back(offspringSprite);
                 npcs.transform.push_back(offspringTransform);
                 npcs.health.push_back(Health(offspringHealth));
                 npcs.stamina.push_back(Stamina(100));
                 npcs.restrictor.push_back(npcs.restrictor[i]);
-                
+
                 // Initialize NPCData with appropriate state based on type
                 NPCData data;
                 data.accumulatedTime = 0.f;
                 data.targetPos = {-1, -1};
-                data.state = std::holds_alternative<NPCConsumer>(type_i) 
-                    ? NPCState(ConsumerState::IDLE) 
+                data.state = std::holds_alternative<NPCConsumer>(type_i)
+                    ? NPCState(ConsumerState::IDLE)
                     : NPCState(PredatorState::IDLE);
                 npcs.npcData.push_back(data);
                 npcs.npcType.push_back(type_i);

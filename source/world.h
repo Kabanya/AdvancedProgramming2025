@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 #include <variant>
+#include <mutex>
+#include "thread_pool.h"
 
 #include "sprite.h"
 #include "transform2d.h"
@@ -11,6 +13,12 @@
 #include "camera2d.h"
 #include "fsm.h"
 #include "math2d.h"
+
+
+std::mutex g_worldMutex;
+std::lock_guard<std::mutex> lock(g_worldMutex);
+ThreadPool g_threadPool(4);
+
 
 // Forward declarations
 class World;
@@ -189,6 +197,7 @@ public:
     FoodGeneratorData foodGenerator;
 
     void update(float dt);
+    void world_update_thread_pool(float dt);
 
     // Helper methods for adding entities
     void add_tile(const Sprite& sprite, const Transform2D& transform);
@@ -238,13 +247,13 @@ inline void World::add_npc(const Sprite& sprite, const Transform2D& transform,
     npcs.health.push_back(Health(100));
     npcs.stamina.push_back(Stamina(100));
     npcs.restrictor.push_back(restrictor);
-    
+
     // Initialize NPCData with appropriate state based on type
     NPCData data;
     data.accumulatedTime = 0.f;
     data.targetPos = {-1, -1};
-    data.state = std::holds_alternative<NPCConsumer>(type) 
-        ? NPCState(ConsumerState::IDLE) 
+    data.state = std::holds_alternative<NPCConsumer>(type)
+        ? NPCState(ConsumerState::IDLE)
         : NPCState(PredatorState::IDLE);
     npcs.npcData.push_back(data);
     npcs.npcType.push_back(type);

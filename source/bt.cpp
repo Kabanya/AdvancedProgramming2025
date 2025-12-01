@@ -1,6 +1,6 @@
 #include "bt.h"
 #include "pathfinding.h"
-#include "dungeon_restrictor.h"
+#include "dungeon_restrictor.h" // IWYU pragma: keep
 #include <cstdlib>
 
 #define ENABLE_NPC_PATHFINDING 1

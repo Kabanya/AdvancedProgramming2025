@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "dungeon_generator.h"
 #include "restrictor.h"
 

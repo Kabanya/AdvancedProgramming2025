@@ -147,7 +147,6 @@ struct Inverter : BTNodeBase<Inverter<Child>> {
 template<typename Child>
 Inverter(Child) -> Inverter<Child>;
 
-
 inline bool is_predator_nearby(BTContext& ctx, int2& predator_pos) {
     auto& transform = ctx.world->npcs.transform[ctx.npc_index];
     float minDist = BTConfig::THREAT_RANGE;
