@@ -51,8 +51,7 @@ std::mutex g_worldMutex;
         std::thread starvationThread(&World::update_starvation_system, this, dt);
         std::thread tirednessThread(&World::update_tiredness_system, this, dt);
         std::thread foodGeneratorThread(&World::update_food_generator, this, dt);
-        std::thread removalsThread(&World::process_deferred_removals, this);
-
+        // std::thread removalsThread(&World::process_deferred_removals, this);
         heroThread.join();
         npcsThread.join();
         foodThread.join();
@@ -61,7 +60,8 @@ std::mutex g_worldMutex;
         starvationThread.join();
         tirednessThread.join();
         foodGeneratorThread.join();
-        removalsThread.join();
+        // removalsThread.join();
+        World::process_deferred_removals();
     }
 #endif // USE_THREADS
 
