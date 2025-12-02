@@ -6,13 +6,7 @@
 #include "dungeon_generator.h"  // IWYU pragma: keep
 #include "dungeon_restrictor.h" // IWYU pragma: keep
 
-#define USE_BEHAVIOUR_TREE 1  // else FINITE STATE MACHINE
-
-// choose one options of the following three for world update
-// if everywhere 0 => base single thread no mutex world update
-#define USE_THREADS     1     // FOR_WORLD_UPDATE
-#define USE_THREAD_POOL 0     // FOR_WORLD_UPDATE
-#define USE_MUTEX       0     // FOR_WORLD_UPDATE
+#include "config.h" // here definition of macros
 
 std::mutex g_worldMutex;
 
@@ -31,6 +25,7 @@ std::mutex g_worldMutex;
 
 
 // ----------------------- WORLD UPDATE TYPES ------------------------
+
 #if USE_THREAD_POOL && !USE_MUTEX && !USE_THREADS // THREAD POOL WORLD UPDATE
     #include "thread_pool.h"   // IWYU pragma: keep
     ThreadPool g_threadPool(4);

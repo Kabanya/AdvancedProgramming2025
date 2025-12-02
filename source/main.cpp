@@ -4,6 +4,8 @@
 #include "world.h"
 // #include <stacktrace>
 
+#include "config.h"
+
 void init_world(SDL_Renderer* renderer, World& world);
 void render_world(SDL_Window* window, SDL_Renderer* renderer, World& world);
 
