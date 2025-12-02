@@ -195,6 +195,7 @@ public:
 
     void update(float dt);
     void update_ts(float dt);
+    void world_update_threaded(float dt);
     void world_update_thread_pool(float dt);
 
     // Helper methods for adding entities
@@ -210,7 +211,7 @@ public:
     void remove_npc(size_t index);
     void remove_food(size_t index);
 
-private: // Standard versions
+private: // Base
     void process_deferred_removals();
     void update_hero(float dt);
     void update_npcs(float dt);
@@ -221,7 +222,7 @@ private: // Standard versions
     void update_tiredness_system(float dt);
     void update_food_generator(float dt);
 
-private: // Thread-safe versions
+private: // Thread-safe
     void process_deferred_removals_ts();
     void update_hero_ts(float dt);
     void update_npcs_ts(float dt);
@@ -232,6 +233,17 @@ private: // Thread-safe versions
     void update_tiredness_system_ts(float dt);
     void update_food_generator_ts(float dt);
 
+
+private: // Thread-pool
+    void process_deferred_removals_tp();
+    void update_hero_tp(float dt);
+    void update_npcs_tp(float dt);
+    void update_food_consumption_tp(float dt);
+    void update_predators_tp(float dt);
+    void update_reproduction_tp(float dt);
+    void update_starvation_system_tp(float dt);
+    void update_tiredness_system_tp(float dt);
+    void update_food_generator_tp(float dt);
 };
 
 // Inline implementations

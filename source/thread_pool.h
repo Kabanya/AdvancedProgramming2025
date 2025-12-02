@@ -37,6 +37,9 @@ private:
 	std::deque<Task> buffer_;
 };
 
+
+// ----------------------- ThreadPool class ------------------------
+
 class ThreadPool {
 public:
 	using Task = std::function<void()>;

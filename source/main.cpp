@@ -61,18 +61,30 @@ int main(int argc, char* argv[])
             float deltaTime = (now - lastTicks) / 1000.0f;
             lastTicks = now;
 
-#if USE_MUTEX_FOR_WORLD
+#if USE_MUTEX
             {
                 OPTICK_EVENT("world.update");
-                world.update(deltaTime);
-            }
-#else
-            {
-                OPTICK_EVENT("world.update.mutex.edition");
                 world.update_ts(deltaTime);
             }
 #endif
-
+#if USE_THREADS
+            {
+                OPTICK_EVENT("world.update.mutex.edition");
+                world.world_update_threaded(deltaTime);
+            }
+#endif
+#if USE_THREAD_POOL
+            {
+                OPTICK_EVENT("world.update.threaded.edition");
+                world.world_update_thread_pool(deltaTime);
+            }
+#endif
+#if !USE_MUTEX && !USE_THREADS && !USE_THREAD_POOL
+            {
+                OPTICK_EVENT("world.update.threadpool.edition");
+                world.update(deltaTime);
+            }
+#endif
             // Теперь сразу цвет внутри Clear
             SDL_SetRenderDrawColor(renderer, 50, 50, 150, 255);
             SDL_RenderClear(renderer);
