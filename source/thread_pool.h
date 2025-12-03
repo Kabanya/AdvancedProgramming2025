@@ -7,6 +7,7 @@
 #include <deque>
 #include <functional>
 
+// ----------------------- BlockingQueue ------------------------
 
 class BlockingQueue
 {
@@ -38,7 +39,7 @@ private:
 };
 
 
-// ----------------------- ThreadPool class ------------------------
+// ----------------------- ThreadPool ------------------------
 
 class ThreadPool {
 public:
@@ -55,8 +56,17 @@ public:
 			}
 	}
 
-	void Submit(Task task) {
-			tasks_.Push(std::move(task));
+	void Submit(Task task){
+		{
+			std::lock_guard<std::mutex> lock(counter_mutex_);
+			active_tasks_++;
+		}
+		tasks_.Push(std::move(task));
+	}
+
+	void WaitAll() {
+		std::unique_lock<std::mutex> lock(counter_mutex_);
+		all_done_.wait(lock, [this] { return active_tasks_ == 0; });
 	}
 
 	void Stop() {
@@ -84,6 +94,13 @@ private:
 				}
 			}
 			task();
+			{
+				std::lock_guard<std::mutex> lock(counter_mutex_);
+				active_tasks_--;
+				if (active_tasks_ == 0) {
+					all_done_.notify_all();
+				}
+			}
 		}
 	}
 
@@ -94,4 +111,8 @@ private:
 
 	bool stop_;
 	std::mutex stop_mutex_;
+
+	size_t active_tasks_ = 0;
+	std::mutex counter_mutex_;
+	std::condition_variable all_done_;
 };

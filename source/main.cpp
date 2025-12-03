@@ -65,25 +65,25 @@ int main(int argc, char* argv[])
 
 #if USE_MUTEX
             {
-                OPTICK_EVENT("world.update");
+                OPTICK_EVENT("mutex.world.update");
                 world.update_ts(deltaTime);
             }
 #endif
 #if USE_THREADS
             {
-                OPTICK_EVENT("world.update.mutex.edition");
+                OPTICK_EVENT("threads.world.update");
                 world.world_update_threaded(deltaTime);
             }
 #endif
 #if USE_THREAD_POOL
             {
-                OPTICK_EVENT("world.update.threaded.edition");
+                OPTICK_EVENT("thread_pool.world.update");
                 world.world_update_thread_pool(deltaTime);
             }
 #endif
 #if !USE_MUTEX && !USE_THREADS && !USE_THREAD_POOL
             {
-                OPTICK_EVENT("world.update.threadpool.edition");
+                OPTICK_EVENT("world.update");
                 world.update(deltaTime);
             }
 #endif

@@ -15,7 +15,6 @@
 #include "math2d.h"
 
 extern std::mutex g_worldMutex;
-// extern ThreadPool g_threadPool(4);
 
 // Forward declarations
 class World;
