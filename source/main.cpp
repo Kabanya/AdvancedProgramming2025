@@ -63,6 +63,12 @@ int main(int argc, char* argv[])
             float deltaTime = (now - lastTicks) / 1000.0f;
             lastTicks = now;
 
+#if USE_SPINLOCK
+            {
+                OPTICK_EVENT("spinlock.world.update");
+                world.update_spnlck(deltaTime);
+            }
+#endif
 #if USE_MUTEX
             {
                 OPTICK_EVENT("mutex.world.update");
@@ -81,7 +87,7 @@ int main(int argc, char* argv[])
                 world.world_update_thread_pool(deltaTime);
             }
 #endif
-#if !USE_MUTEX && !USE_THREADS && !USE_THREAD_POOL
+#if !USE_MUTEX && !USE_THREADS && !USE_THREAD_POOL && !USE_SPINLOCK
             {
                 OPTICK_EVENT("world.update");
                 world.update(deltaTime);

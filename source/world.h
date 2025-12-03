@@ -4,7 +4,7 @@
 #include <vector>
 #include <variant>
 #include <mutex>
-// #include "thread_pool.h"
+#include "spinlock_mutex.h"
 
 #include "sprite.h"
 #include "transform2d.h"
@@ -15,6 +15,12 @@
 #include "math2d.h"
 
 extern std::mutex g_worldMutex;
+extern spinlock_mutex g_worldSpinlock;
+#if defined(__APPLE__) && (defined(__GNUC__) || defined(__clang__))
+    extern __thread bool spinlock_mtx_locked;
+#else
+    extern thread_local bool spinlock_mtx_locked;
+#endif
 
 // Forward declarations
 class World;
@@ -194,6 +200,7 @@ public:
 
     void update(float dt);
     void update_ts(float dt);
+    void update_spnlck(float dt);
     void world_update_threaded(float dt);
     void world_update_thread_pool(float dt);
 
@@ -232,17 +239,16 @@ private: // Thread-safe
     void update_tiredness_system_ts(float dt);
     void update_food_generator_ts(float dt);
 
-
-private: // Thread-pool
-    void process_deferred_removals_tp();
-    void update_hero_tp(float dt);
-    void update_npcs_tp(float dt);
-    void update_food_consumption_tp(float dt);
-    void update_predators_tp(float dt);
-    void update_reproduction_tp(float dt);
-    void update_starvation_system_tp(float dt);
-    void update_tiredness_system_tp(float dt);
-    void update_food_generator_tp(float dt);
+private: // Spinlock
+    void process_deferred_removals_spnlck();
+    void update_hero_spnlck(float dt);
+    void update_npcs_spnlck(float dt);
+    void update_food_consumption_spnlck(float dt);
+    void update_predators_spnlck(float dt);
+    void update_reproduction_spnlck(float dt);
+    void update_starvation_system_spnlck(float dt);
+    void update_tiredness_system_spnlck(float dt);
+    void update_food_generator_spnlck(float dt);
 };
 
 // Inline implementations
