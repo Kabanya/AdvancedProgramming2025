@@ -7,4 +7,4 @@
 #define USE_MUTEX       0     // FOR_WORLD_UPDATE
 #define USE_THREADS     0     // FOR_WORLD_UPDATE
 #define USE_THREAD_POOL 0     // FOR_WORLD_UPDATE
-#define USE_SPINLOCK    1     // FOR_WORLD_UPDATE
+#define USE_SPINLOCK    0     // FOR_WORLD_UPDATE
