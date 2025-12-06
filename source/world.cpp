@@ -75,15 +75,16 @@ TLS_VARIABLE_INIT(bool, spinlock_mtx_locked, false);
 #if USE_THREADS && !USE_MUTEX && !USE_THREAD_POOL // USE_THREADS
     #include <thread>
     void World::world_update_threaded(float dt) {
-        std::thread heroThread(&World::update_hero, this, dt);
-        std::thread npcsThread(&World::update_npcs, this, dt);
-        std::thread foodThread(&World::update_food_consumption, this, dt);
-        std::thread predatorsThread(&World::update_predators, this, dt);
-        std::thread reproductionThread(&World::update_reproduction, this, dt);
-        std::thread starvationThread(&World::update_starvation_system, this, dt);
-        std::thread tirednessThread(&World::update_tiredness_system, this, dt);
-        std::thread foodGeneratorThread(&World::update_food_generator, this, dt);
-        // std::thread removalsThread(&World::process_deferred_removals, this);
+        // Use thread-safe variants to avoid data races / invalid indices
+        std::thread heroThread(&World::update_hero_ts, this, dt);
+        std::thread npcsThread(&World::update_npcs_ts, this, dt);
+        std::thread foodThread(&World::update_food_consumption_ts, this, dt);
+        std::thread predatorsThread(&World::update_predators_ts, this, dt);
+        std::thread reproductionThread(&World::update_reproduction_ts, this, dt);
+        std::thread starvationThread(&World::update_starvation_system_ts, this, dt);
+        std::thread tirednessThread(&World::update_tiredness_system_ts, this, dt);
+        std::thread foodGeneratorThread(&World::update_food_generator_ts, this, dt);
+        // std::thread removalsThread(&World::process_deferred_removals_ts, this);
         heroThread.join();
         npcsThread.join();
         foodThread.join();
@@ -93,7 +94,7 @@ TLS_VARIABLE_INIT(bool, spinlock_mtx_locked, false);
         tirednessThread.join();
         foodGeneratorThread.join();
         // removalsThread.join();
-        World::process_deferred_removals();
+        World::process_deferred_removals_ts();
     }
 #endif // USE_THREADS
 
