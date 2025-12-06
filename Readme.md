@@ -141,6 +141,42 @@ void world_update_thread_pool(World& world, float dt)
 
 - 1 балл. Реализуйте регенерацию мира по клавише R. В качестве синхронизации используйте RCU подход. Но только вместо копирования мира просто сгенерируйте новый
 
+---
+
+### Screenshots
+#### Mutex
+##### Debug
+![Mutex. Debug](./readme_images/task-system-screens/capture_mutex_version_debug.png)
+##### Release
+![Mutex. Release](./readme_images/task-system-screens/capture_mutex_version_release.png)
+
+---
+
+#### Threads
+##### Debug
+![Threads. Debug](./readme_images/task-system-screens/capture_threads_version_debug.png)
+##### Release
+![Threads. Release](./readme_images/task-system-screens/capture_threads_version_release.png)
+
+---
+
+#### Thread-pool
+##### Debug
+![Thread-pool. Debug](./readme_images/task-system-screens/capture_thread_pool_version_debug.png)
+##### Release
+![Thread-pool. Release](./readme_images/task-system-screens/capture_thread_pool_version_release.png)
+
+
+---
+
+#### Spinlock
+##### Debug
+![Spinlock. Debug](./readme_images/task-system-screens/capture_spinlock_version_debug.png)
+##### Release
+![Spinlock. Release](./readme_images/task-system-screens/capture_spinlock_version_release.png)
+
+---
+
 ## 5. Network application
 
 **DeadLine** - 11.12.25
