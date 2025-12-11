@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <thread>
+#include <immintrin.h>
 
 // ========================================================
 // recursive_scoped_lock - RAII wrapper for recursive mutex locking
@@ -103,7 +104,7 @@ struct noop
     {
         for (unsigned i = 0; i < Count; ++i)
         {
-            asm volatile ("nop");
+            _mm_pause();
         }
     }
 };

@@ -2,16 +2,18 @@
 #include <algorithm>
 #include <mutex>
 
+#include "optick.h"
 #include "world.h"
+#include "config.h" // USE_BEHAVIOUR_TREE USE_THREAD_POOL USE_MUTEX USE_THREADS
+#include "spinlock_mutex.h"
+#include "dungeon_generator.h"  // IWYU pragma: keep
+#include "dungeon_restrictor.h" // IWYU pragma: keep
 
 // Global mutex and spinlock definitions
 std::mutex g_worldMutex;
 spinlock_mutex g_worldSpinlock;
 TLS_VARIABLE_INIT(bool, spinlock_mtx_locked, false);
-#include "config.h" // USE_BEHAVIOUR_TREE USE_THREAD_POOL USE_MUTEX USE_THREADS
-#include "spinlock_mutex.h"
-#include "dungeon_generator.h"  // IWYU pragma: keep
-#include "dungeon_restrictor.h" // IWYU pragma: keep
+
 
 // ----------------------- AI TYPES ------------------------
 #if USE_BEHAVIOUR_TREE
@@ -643,7 +645,8 @@ void World::process_deferred_removals_ts() {
 }
 
 void World::update_hero_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_hero_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     if (hero.size() == 0) return;
 
     const bool* keys = SDL_GetKeyboardState(nullptr);
@@ -687,7 +690,8 @@ void World::update_hero_ts(float dt) {
 }
 
 void World::update_npcs_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_npcs_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     const int2 directions[] = { int2{1,0}, int2{-1,0}, int2{0,1}, int2{0,-1} };
 
     for (size_t i = 0; i < npcs.size(); ++i) {
@@ -719,7 +723,8 @@ void World::update_npcs_ts(float dt) {
 }
 
 void World::update_food_consumption_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_food_consumption_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     // Hero consumes food
     for (size_t h = 0; h < hero.size(); ++h) {
         bool heroMarkedForRemoval = false;
@@ -820,7 +825,8 @@ void World::update_food_consumption_ts(float dt) {
 }
 
 void World::update_predators_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_predators_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     // Predators hunt consumer NPCs and hero
     for (size_t p = 0; p < npcs.size(); ++p) {
         // Check if this NPC is a predator
@@ -899,7 +905,8 @@ void World::update_predators_ts(float dt) {
 }
 
 void World::update_starvation_system_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_starvation_system_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     starvationSystem.accumulator += dt;
     if (starvationSystem.accumulator >= starvationSystem.damageInterval) {
         starvationSystem.accumulator -= starvationSystem.damageInterval;
@@ -927,7 +934,8 @@ void World::update_starvation_system_ts(float dt) {
 }
 
 void World::update_tiredness_system_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_tiredness_system_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     tirednessSystem.accumulator += dt;
     if (tirednessSystem.accumulator >= tirednessSystem.tirednessInterval) {
         tirednessSystem.accumulator -= tirednessSystem.tirednessInterval;
@@ -945,7 +953,8 @@ void World::update_tiredness_system_ts(float dt) {
 }
 
 void World::update_reproduction_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_reproduction_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     // Check for NPCs in the same location that can reproduce
     for (size_t i = 0; i < npcs.size(); ++i) {
         // Skip if already marked for removal
@@ -1041,7 +1050,8 @@ void World::update_reproduction_ts(float dt) {
 }
 
 void World::update_food_generator_ts(float dt) {
-    std::lock_guard<std::mutex> lock(g_worldMutex);
+    OPTICK_THREAD("world.update_food_generator_ts");
+    OPTICK_SCOPED_MUTEX_LOCK(g_worldMutex);
     foodGenerator.timeSinceLastSpawn += dt;
     if (foodGenerator.timeSinceLastSpawn >= foodGenerator.spawnInterval) {
         foodGenerator.timeSinceLastSpawn -= foodGenerator.spawnInterval;
