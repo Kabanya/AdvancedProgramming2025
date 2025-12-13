@@ -166,6 +166,10 @@ void world_update_thread_pool(World& world, float dt)
 ##### Release
 ![Thread-pool. Release](./readme_images/task-system-screens/capture_thread_pool_version_release.png)
 
+---
+
+![Thread-pool. Debug. More Optick](./readme_images/task-system-screens/every_thread_capture_thread_pool_version_debug.png)
+
 
 ---
 
